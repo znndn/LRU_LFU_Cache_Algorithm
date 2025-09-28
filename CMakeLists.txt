@@ -3,4 +3,4 @@ project(LRU_Test)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(LRU_Test main.cpp)
+add_executable(LRU_Test main.cpp LruAlgorithm.h LruAlgorithm.h)
