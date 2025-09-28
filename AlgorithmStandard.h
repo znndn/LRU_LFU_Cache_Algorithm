@@ -1,17 +1,15 @@
 #pragma once
 
-#include <iostream>
-
 namespace AlgorithmStandard
 {
 
     template<typename Value,typename Key>
-    class AlgorithmStandard
+    class Algorithmstandard
     {
-        virtual ~AlgorithmStandard()=0;
+        virtual ~Algorithmstandard()=0;
     public:
-        virtual Value Get(Value val,Key key)=0;
-        virtual bool Get(Value val)=0;
-        
+        virtual Value get(Value val,Key key)=0;
+        virtual bool get(Value val)=0;
+        virtual void put(Value val,Key key)=0;
     };
 }
