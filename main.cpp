@@ -1,4 +1,6 @@
+#include "LRUAlgorithm.h"
 #include <iostream>
+
 
 int main()
 {
