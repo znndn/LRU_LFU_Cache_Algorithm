@@ -25,7 +25,7 @@ namespace TEST
 
     void TestAlgorithm()
     {
-        LRU::LRUAlgorithm<int,std::string> lru(CAPACITY);
+        LRU::LRUAlgorithm<std::string,int> lru(CAPACITY);
 
     }
 }

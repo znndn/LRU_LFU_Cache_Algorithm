@@ -50,6 +50,7 @@ namespace LRU
     private:
         int capacity=CAPACITY; // 记录缓存的最大容量
         std::unordered_map<Key,std::shared_ptr<LRUNode<Value,Key> > > cache;
+        // 对于unordered_map的operator[key]，如果找到会返回value（返回某变量的引用=返回某变量本身）。
         std::shared_ptr<LRUNode<Value,Key>> dummyhead;
         std::shared_ptr<LRUNode<Value,Key>> dummytail;
         std::mutex mutex;
@@ -69,6 +70,11 @@ namespace LRU
         }
         void moveNodeToLast(std::shared_ptr<LRUNode<Value,Key> > node)
         {
+            if (auto node_prev_sharedptr=node->prev.lock())
+            {
+                node_prev_sharedptr->next=node->next;
+            }
+            node->next->prev=node->prev;
             node->next=dummytail;
             node->prev=dummytail->prev;
             if (auto dummytail_prev_sharedptr=dummytail->prev.lock())
@@ -101,19 +107,25 @@ namespace LRU
             // 这里一定要记得先为dummytail和dummyhead分配内存，直接就后两行就是空指针
         }
         // 注意每次调用都会更新上次访问历史记录
-        Value get(Key key) override
+        Value get(const Key& key) override
         {
             if (cache.find(key)!=cache.end())
             {
                 // HashMap不能访问特定下标，但是可以访问特定的键
                 removeNodeFromList(cache[key]);
-                // unordered_map[key]返回的是key对应的value的引用，无法使用.first,.second等
+                // unordered_map[key]返回的是key对应的value的引用（也就是value本身），无法使用.first,.second等
                 moveNodeToLast(cache[key]);
+                return cache[key]->getValue();
             }
-            return cache[key];
+            else
+            {
+                return Value{};
+                // 未命中，返回一个默认构造的 Value
+            }
+            // 记住对于unordered_map，使用MapName[Key]访问不存在的key会自动创建
             // 这里需要考虑没有找到的情况，不能直接返回对应的key，否则可能会创建新的键值对
         }
-        bool get(Value val,Key key) override
+        bool get(const Value& val,const Key& key) override
         {
             if (cache.find(key)!=cache.end())
             {
@@ -123,11 +135,14 @@ namespace LRU
             }
             return false;
         }
-        void put(Value val,Key key) override
+        void put(const Value& val,const Key& key) override
         {
             std::lock_guard lock(mutex);
             if (cache.find(key)!=cache.end())
             {
+                // 记得更新value值（刚被访问）
+                auto node=cache[key];
+                node->setValue(val);
                 removeNodeFromList(cache[key]);
                 moveNodeToLast(cache[key]);
             }
@@ -135,9 +150,9 @@ namespace LRU
             {
                 if (capacity<=cache.size())
                 {
-                    Key toDeleteKey=dummyhead.next->getKey();
-                    removeNodeFromList(cache[toDeleteKey]);
-                    cache.erase(toDeleteKey);
+                    auto NodeToDelete=dummyhead->next;
+                    cache.erase(NodeToDelete->getKey());
+                    removeNodeFromList(NodeToDelete);
                     auto newNode=std::make_shared<LRUNode<Value,Key> >(val,key);
                     // 不要使用new关键字，使用make_shared确保创建在堆上（手动，否则会被直接释放）
                     cache[key]=newNode;
