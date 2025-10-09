@@ -57,8 +57,13 @@ namespace LRU
         void removeNodeFromList(std::shared_ptr<LRUNode<Value,Key> > node)
         {
             // 这里牢记对于任意node的prev都是弱指针，只能通过lock方法变成sharedptr，不能直接使用
-            node->prev->next=node->next;
+            if (auto node_prev_sharedptr=node->prev.lock())
+                node_prev_sharedptr->next=node->next;
             node->next->prev=node->prev;
+            // 为什么node->prev->next需要lock解锁，但是node->next->prev不用？
+            // 因为c++允许weakptrA=weakptrB的操作
+            // 第一行访问weakptr->next非法
+            // 第二行next->prev是weakptr（左边），同时node->prev也是weakptr（右边），所以可以直接赋值
             node->next=nullptr;
             node->prev=nullptr;
         }
@@ -66,13 +71,18 @@ namespace LRU
         {
             node->next=dummytail;
             node->prev=dummytail->prev;
-            dummytail->prev->next=node;
-            dummytail->prev=node;
+            if (auto dummytail_prev_sharedptr=dummytail->prev.lock())
+            {
+                dummytail_prev_sharedptr->next=node;
+                dummytail_prev_sharedptr=node;
+            }
         }
+
         void removeNode(std::shared_ptr<LRUNode<Value,Key> > node)
         {
             node->next->prev=node->prev;
-            node->prev->next=node->next;
+            if (auto node_prev_sharedptr=node->prev.lock())
+                node_prev_sharedptr->next=node->next;
             node->next=nullptr;
             node->prev=nullptr;
             node=nullptr;
@@ -101,6 +111,7 @@ namespace LRU
                 moveNodeToLast(cache[key]);
             }
             return cache[key];
+            // 这里需要考虑没有找到的情况，不能直接返回对应的key，否则可能会创建新的键值对
         }
         bool get(Value val,Key key) override
         {
@@ -127,17 +138,18 @@ namespace LRU
                     Key toDeleteKey=dummyhead.next->getKey();
                     removeNodeFromList(cache[toDeleteKey]);
                     cache.erase(toDeleteKey);
-                    LRUNode<Value,Key> newNode = LRUNode<Value,Key>(val,key);
-                    std::shared_ptr<LRUNode<Value,Key> > *newNodePtr=&newNode;
-                    cache.insert(std::pair<Key,std::shared_ptr<LRUNode<Value,Key> > >(key,newNode));
+                    auto newNode=std::make_shared<LRUNode<Value,Key> >(val,key);
+                    // 不要使用new关键字，使用make_shared确保创建在堆上（手动，否则会被直接释放）
+                    cache[key]=newNode;
+                    // 不需要使用insert，因为cache[key]无法找到时会自动创建一个新的键值对（0和nullptr）
+                    // 找到时会返回std::shared_ptr的引用
                     moveNodeToLast(newNode);
                 }
                 else
                 {
-                    LRUNode<Value,Key> newNode = LRUNode<Value,Key>(val,key);
-                    std::shared_ptr<LRUNode<Value,Key> > *newNodePtr=&newNode;
-                    cache.insert(std::pair<Key,std::shared_ptr<LRUNode<Value,Key> > >(key,newNode));
-                    moveNodeToLast(newNode);
+                    auto NewNode=std::make_shared<LRUNode<Value,Key> >(val,key);
+                    cache[key]=NewNode;
+                    moveNodeToLast(NewNode);
                 }
             }
         }
