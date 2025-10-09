@@ -56,6 +56,7 @@ namespace LRU
 
         void removeNodeFromList(std::shared_ptr<LRUNode<Value,Key> > node)
         {
+            // 这里牢记对于任意node的prev都是弱指针，只能通过lock方法变成sharedptr，不能直接使用
             node->prev->next=node->next;
             node->next->prev=node->prev;
             node->next=nullptr;
