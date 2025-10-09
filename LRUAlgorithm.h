@@ -1,3 +1,5 @@
+#pragma once
+
 #include <memory>
 #include <unordered_map>
 #include <mutex>
@@ -46,13 +48,11 @@ namespace LRU
     class LRUAlgorithm: public AlgorithmStandard::Algorithmstandard<Value,Key>
     {
     private:
-        int capacity=0; // 记录缓存的最大容量
+        int capacity=CAPACITY; // 记录缓存的最大容量
         std::unordered_map<Key,std::shared_ptr<LRUNode<Value,Key> > > cache;
-        LRUNode<Value,Key> dummyhead;
-        LRUNode<Value,Key> dummytail;
+        std::shared_ptr<LRUNode<Value,Key>> dummyhead;
+        std::shared_ptr<LRUNode<Value,Key>> dummytail;
         std::mutex mutex;
-
-        ~LRUAlgorithm() override=default;
 
         void removeNodeFromList(std::shared_ptr<LRUNode<Value,Key> > node)
         {
@@ -78,12 +78,16 @@ namespace LRU
         }
 
     public:
+        ~LRUAlgorithm() override=default;
+
         LRUAlgorithm(int capacity):capacity(capacity)
         {
-            LRUNode<Value,Key> *dummyhead;
-            LRUNode<Value,Key> *dummytail;
-            dummyhead->next=&dummytail;
-            dummytail->prev=&dummyhead;
+            dummyhead=std::make_shared<LRUNode<Value,Key> >;
+            dummytail=std::make_shared<LRUNode<Value,Key> >;
+            // 使用makeshare而非new来构造sharedpointer更加合适
+            dummyhead->next=dummytail;
+            dummytail->prev=dummyhead;
+            // 这里一定要记得先为dummytail和dummyhead分配内存，直接就后两行就是空指针
         }
         // 注意每次调用都会更新上次访问历史记录
         Value get(Key key) override
@@ -91,28 +95,29 @@ namespace LRU
             if (cache.find(key)!=cache.end())
             {
                 // HashMap不能访问特定下标，但是可以访问特定的键
-                removeNodeFromList(cache[key].second);
-                moveNodeToLast(cache[key].second);
+                removeNodeFromList(cache[key]);
+                // unordered_map[key]返回的是key对应的value的引用，无法使用.first,.second等
+                moveNodeToLast(cache[key]);
             }
-            return cache[key].second;
+            return cache[key];
         }
         bool get(Value val,Key key) override
         {
             if (cache.find(key)!=cache.end())
             {
-                removeNodeFromList(cache[key].second);
-                moveNodeToLast(cache[key].second);
+                removeNodeFromList(cache[key]);
+                moveNodeToLast(cache[key]);
                 return true;
             }
             return false;
         }
-        void put(Key key,Value val) override
+        void put(Value val,Key key) override
         {
             std::lock_guard lock(mutex);
             if (cache.find(key)!=cache.end())
             {
-                removeNodeFromList(cache[key].second);
-                moveNodeToLast(cache[key].second);
+                removeNodeFromList(cache[key]);
+                moveNodeToLast(cache[key]);
             }
             else
             {
