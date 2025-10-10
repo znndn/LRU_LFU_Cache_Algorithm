@@ -1,6 +1,6 @@
 #pragma once
 const int CAPACITY=20;
-const int OPERATIONS=500000;
+const int OPERATIONS=500000; // 总操作次数
 const int HOTKEY=20;
 const int COLDKEYS=5000;
 

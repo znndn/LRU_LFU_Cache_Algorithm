@@ -1,3 +1,0 @@
-/home/LRU_Test/CMakeFiles/edit_cache.dir
-/home/LRU_Test/CMakeFiles/rebuild_cache.dir
-/home/LRU_Test/CMakeFiles/LRU_Test.dir
