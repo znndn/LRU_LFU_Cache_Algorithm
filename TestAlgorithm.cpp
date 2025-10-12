@@ -7,19 +7,22 @@
 
 namespace TEST
 {
+    void printResult(int operations,int hits,long long duration);
+
     class Timer
     {
     private:
-        std::chrono::system_clock::time_point start;
-        std::chrono::system_clock::time_point end;
+        std::chrono::high_resolution_clock::time_point start;
+        std::chrono::high_resolution_clock::time_point end;
+        //  使用high_resolution_clock不收系统时钟影响
     public:
         void TimerStart()
         {
-            start = std::chrono::system_clock::now();
+            start = std::chrono::high_resolution_clock ::now();
         }
         auto TimerEnd()
         {
-            end = std::chrono::system_clock::now();
+            end = std::chrono::high_resolution_clock ::now();
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
             return duration;
         }
@@ -30,11 +33,13 @@ namespace TEST
         LRU::LRUAlgorithm<std::string,int> lru(CAPACITY);
         int hits=0;
         int operations=0;
-        std::mt19937 rng;
-        std::uniform_int_distribution<int> ReadOrWrite(1,10);
+        std::random_device seed;
+        // 需要随机种子，每次调用seed生成一个随机数，seed是实例名
+        std::mt19937 rng(seed());
         std::uniform_int_distribution<int> HotOrCold(1,10);
         std::uniform_int_distribution<int> HotKeyGen(0,HOTKEY-1);
-        std::uniform_int_distribution<int> ColdKeyGen(HOTKEY,COLDKEYS);
+        std::uniform_int_distribution<int> ColdKeyGen(HOTKEY, HOTKEY + COLDKEYS - 1);
+        // 注意冷数据的数量是5000个，而非和热数据一共5000个。
 
         // 预热
         for (int i=0;i<HOTKEY;i++)
@@ -47,22 +52,58 @@ namespace TEST
         t.TimerStart();
         for (int i=0;i<OPERATIONS;i++)
         {
-            
+            if (i%2==0)
+            {
+                if (HotOrCold(rng)<=3)
+                {
+                    int CurrentKey = ColdKeyGen(rng);
+                    lru.put("value"+std::to_string(CurrentKey),CurrentKey);
+                    // 注意格式一致，先写上value
+                }
+                else
+                {
+                    int CurrentKey = HotKeyGen(rng);
+                    lru.put("value"+std::to_string(CurrentKey),CurrentKey);
+                }
+            }
+            else
+            {
+                operations++;
+                if (HotOrCold(rng)<=3)
+                {
+                    int CurrentKey = ColdKeyGen(rng);
+                    if (lru.get("value"+std::to_string(CurrentKey),CurrentKey)==true)
+                    {
+                        hits++;
+                    }
+                }
+                else
+                {
+                    int CurrentKey = HotKeyGen(rng);
+                    if (lru.get("value"+std::to_string(CurrentKey),CurrentKey)==true)
+                    {
+                        hits++;
+                    }
+                }
+            }
         }
+        printResult(operations,hits,t.TimerEnd().count());
     }
 
-    void printResult(int operations,int hits)
+    void printResult(int operations,int hits,long long duration)
     {
-        double hitRate=((double)hits)/((double)operations);
+        double hitRate = static_cast<double>(hits) / static_cast<double>(operations);
+        // C++风格的强制类型转换应该使用static_cast
         std::cout<<"热点数据访问测试结果:"<<std::endl;
         std::cout<<"操作数: "<<operations<<std::endl;
         std::cout<<"命中数: "<<hits<<std::endl;
         std::cout<<"命中率: "<<std::fixed<<std::setprecision(4)<<hitRate<<std::endl;
     }
+}
 
-    int main()
-    {
-        TestAlgorithm();
-        return 0;
-    }
+// main函数总是应该在命名空间外部
+int main()
+{
+    TEST::TestAlgorithm();
+    return 0;
 }
