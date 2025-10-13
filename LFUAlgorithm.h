@@ -9,6 +9,6 @@ namespace LFU
 {
     class LFUAlgorithm
     {
-        
+
     };
 };
