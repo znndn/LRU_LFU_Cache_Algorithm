@@ -1,4 +1,4 @@
-# Install script for directory: /home/LRU_Test
+# Install script for directory: /home/Cache_Algorithm
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

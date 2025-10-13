@@ -4,6 +4,7 @@
 #include <random>
 #include "LRUAlgorithm.h"
 #include "AlgorithmStandard.h"
+#include "LFUAlgorithm.h"
 
 namespace TEST
 {

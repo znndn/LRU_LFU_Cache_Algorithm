@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
-project(LRU_Test)
+project(CacheAlgorithm)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-add_executable(LRU_Test TestAlgorithm.cpp)
+add_executable(CacheAlgorithm TestAlgorithm.cpp
+        LFUAlgorithm.h)
 
-set_target_properties(LRU_Test PROPERTIES CLEAN_DIRECT_OUTPUT 1)
+set_target_properties(CacheAlgorithm PROPERTIES CLEAN_DIRECT_OUTPUT 1)

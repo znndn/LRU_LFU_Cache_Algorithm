@@ -111,7 +111,7 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named LRU_Test
+# Target rules for targets named Cache_Algorithm
 
 # Build rule for target.
 LRU_Test: cmake_check_build_system
