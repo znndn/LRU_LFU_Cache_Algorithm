@@ -19,11 +19,8 @@ namespace AlgorithmStandard
     public:
         virtual ~Algorithmstandard()=0;
         // 注意析构函数在大多数情况下都应该是public的
-        virtual bool get(const Value& val,const Key& key)=0;
-        // 通常习惯将 Key放在前面，Value 放在后面
-        // 即 template<typename Key, typename Value>。
-        // 这只是一个编码约定，不影响功能，但能让代码更符合常规。
-        virtual Value get(const Key& key)=0;
+        virtual bool get(const Key& key, Value& value) = 0;
+        // 使用bool确认是否查找成功，通过修改指针value传达key对应的value
         virtual void put(const Value& val,const Key& key)=0;
     };
 

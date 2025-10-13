@@ -26,14 +26,15 @@ namespace LRU
             next=nullptr;
             prev.reset();
         };
-        Key getKey()
+        Key getKey() const
         {
             return key;
         }
-        Value getValue()
+        Value getValue() const
         {
             return value;
         }
+        // const 成员函数的用法（放在函数声明末尾），表示该函数的所有操作只读
         void setValue(Value val)
         {
             value=val;
@@ -89,38 +90,27 @@ namespace LRU
             // 这里一定要记得先为dummytail和dummyhead分配内存，直接就后两行就是空指针
         }
         // 注意每次调用都会更新上次访问历史记录
-        Value get(const Key& key) override
+
+        bool get(const Key& key, Value& value) override
         {
-            if (cache.find(key)!=cache.end())
+            std::lock_guard<std::mutex> lock(mutex);
+            auto iter=cache.find(key);
+            if (iter!=cache.end())
             {
-                // HashMap不能访问特定下标，但是可以访问特定的键
-                removeNode(cache[key]);
-                // unordered_map[key]返回的是key对应的value的引用（也就是value本身），无法使用.first,.second等
-                addNodeToLast(cache[key]);
-                return cache[key]->getValue();
-            }
-            else
-            {
-                return Value{};
-                // 未命中，返回一个默认构造的 Value
-            }
-            // 记住对于unordered_map，使用MapName[Key]访问不存在的key会自动创建
-            // 这里需要考虑没有找到的情况，不能直接返回对应的key，否则可能会创建新的键值对
-        }
-        bool get(const Value& val,const Key& key) override
-        {
-            if (cache.find(key)!=cache.end())
-            {
-                removeNode(cache[key]);
-                addNodeToLast(cache[key]);
+                auto node_ptr=cache[key];
+                value=node_ptr->getValue();
+                removeNode(node_ptr);
+                addNodeToLast(node_ptr);
                 return true;
             }
-            return false;
+            else  return false;
         }
+
         void put(const Value& val,const Key& key) override
         {
             std::lock_guard lock(mutex);
-            if (cache.find(key)!=cache.end())
+            auto iter=cache.find(key);
+            if (iter!=cache.end())
             {
                 // 记得更新value值（刚被访问）
                 auto node=cache[key];

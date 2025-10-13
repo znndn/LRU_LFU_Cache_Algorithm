@@ -36,6 +36,7 @@ namespace TEST
         std::random_device seed;
         // 需要随机种子，每次调用seed生成一个随机数，seed是实例名
         std::mt19937 rng(seed());
+        std::uniform_int_distribution<int> GetOrPut(1,10);
         std::uniform_int_distribution<int> HotOrCold(1,10);
         std::uniform_int_distribution<int> HotKeyGen(0,HOTKEY-1);
         std::uniform_int_distribution<int> ColdKeyGen(HOTKEY, HOTKEY + COLDKEYS - 1);
@@ -52,7 +53,7 @@ namespace TEST
         t.TimerStart();
         for (int i=0;i<OPERATIONS;i++)
         {
-            if (i%2==0)
+            if (GetOrPut(rng)<=3)
             {
                 if (HotOrCold(rng)<=3)
                 {
@@ -72,17 +73,29 @@ namespace TEST
                 if (HotOrCold(rng)<=3)
                 {
                     int CurrentKey = ColdKeyGen(rng);
-                    if (lru.get("value"+std::to_string(CurrentKey),CurrentKey)==true)
+                    std::string retrived_value="value"+std::to_string(CurrentKey);
+                    // 这样避免使用一个只作用于函数的局部变量作为会修改外部变量的函数参数（不允许）
+                    if (lru.get(CurrentKey,retrived_value)==true)
                     {
                         hits++;
+                        // 缓存返回值正确性检查
+                        if (retrived_value!="value"+std::to_string(CurrentKey))
+                        {
+                            std::cout<<"使用get方法时读取错误在"<<retrived_value<<std::endl;
+                        }
                     }
                 }
                 else
                 {
                     int CurrentKey = HotKeyGen(rng);
-                    if (lru.get("value"+std::to_string(CurrentKey),CurrentKey)==true)
+                    std::string retrived_value="value"+std::to_string(CurrentKey);
+                    if (lru.get(CurrentKey,retrived_value)==true)
                     {
                         hits++;
+                        if (retrived_value!="value"+std::to_string(CurrentKey))
+                        {
+                            std::cout<<"使用get方法时读取错误在"<<retrived_value<<std::endl;
+                        }
                     }
                 }
             }
@@ -98,6 +111,7 @@ namespace TEST
         std::cout<<"操作数: "<<operations<<std::endl;
         std::cout<<"命中数: "<<hits<<std::endl;
         std::cout<<"命中率: "<<std::fixed<<std::setprecision(4)<<hitRate<<std::endl;
+        std::cout<<"总用时: "<<duration<<"ms"<<std::endl;
     }
 }
 
