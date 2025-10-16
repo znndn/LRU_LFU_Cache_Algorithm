@@ -31,7 +31,7 @@ namespace TEST
 
     void TestAlgorithm()
     {
-        LRU::LRUAlgorithm<std::string,int> lru(CAPACITY);
+        LRU::LRUAlgorithm<std::string,int> lru(CACHE_CAPACITY);
         int hits=0;
         int operations=0;
         std::random_device seed;
