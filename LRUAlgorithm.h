@@ -49,7 +49,7 @@ namespace LRU
     class LRUAlgorithm: public AlgorithmStandard::Algorithmstandard<Value,Key>
     {
     private:
-        int capacity=CACHE_CAPACITY; // 记录缓存的最大容量
+        int capacity=DEFAULT_CACHE_CAPACITY; // 记录缓存的最大容量
         std::unordered_map<Key,std::shared_ptr<LRUNode<Value,Key> > > cache;
         // 对于unordered_map的operator[key]，如果找到会返回value（返回某变量的引用=返回某变量本身）。
         std::shared_ptr<LRUNode<Value,Key>> dummyhead;
@@ -79,7 +79,7 @@ namespace LRU
     public:
         ~LRUAlgorithm() override=default;
 
-        LRUAlgorithm(int capacity):capacity(capacity)
+        explicit LRUAlgorithm(int capacity):capacity(capacity)
         {
             dummyhead=std::make_shared<LRUNode<Value,Key> >(Value{}, Key{});
             dummytail=std::make_shared<LRUNode<Value,Key> >(Value{}, Key{});

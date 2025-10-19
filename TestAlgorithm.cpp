@@ -1,6 +1,7 @@
 #include <iostream>
 #include <chrono>
 #include <iomanip>
+#include <climits>
 #include <random>
 #include "LRUAlgorithm.h"
 #include "AlgorithmStandard.h"
@@ -8,7 +9,7 @@
 
 namespace TEST
 {
-    void printResult(int operations,int hits,long long duration);
+    void printResult(int operations,int hits,long long duration,std::string description);
 
     class Timer
     {
@@ -31,8 +32,12 @@ namespace TEST
 
     void TestAlgorithm()
     {
-        LRU::LRUAlgorithm<std::string,int> lru(CACHE_CAPACITY);
-        int hits=0;
+        LRU::LRUAlgorithm<std::string,int> lru(DEFAULT_CACHE_CAPACITY);
+        LFU::LFUAlgorithm<int,std::string> lfuNoReduction(INT_MAX);
+        LFU::LFUAlgorithm<int,std::string> lfuWithReduction(20000); // 假设最大阈值是20000来触发衰减
+        int hits_LRU=0;
+        int hits_LFU=0;
+        int hits_LFU_AGING=0;
         int operations=0;
         std::random_device seed;
         // 需要随机种子，每次调用seed生成一个随机数，seed是实例名
@@ -48,7 +53,10 @@ namespace TEST
         {
             std::string ToBeValue = "value" + std::to_string(i);
             lru.put(ToBeValue,i);
+            lfuNoReduction.put(ToBeValue,i);
+            lfuWithReduction.put(ToBeValue,i);
         }
+
 
         Timer t;
         t.TimerStart();
@@ -60,12 +68,16 @@ namespace TEST
                 {
                     int CurrentKey = ColdKeyGen(rng);
                     lru.put("value"+std::to_string(CurrentKey),CurrentKey);
+                    lfuNoReduction.put("value"+std::to_string(CurrentKey),CurrentKey);
+                    lfuWithReduction.put("value"+std::to_string(CurrentKey),CurrentKey);
                     // 注意格式一致，先写上value
                 }
                 else
                 {
                     int CurrentKey = HotKeyGen(rng);
                     lru.put("value"+std::to_string(CurrentKey),CurrentKey);
+                    lfuNoReduction.put("value"+std::to_string(CurrentKey),CurrentKey);
+                    lfuWithReduction.put("value"+std::to_string(CurrentKey),CurrentKey);
                 }
             }
             else
@@ -78,11 +90,29 @@ namespace TEST
                     // 这样避免使用一个只作用于函数的局部变量作为会修改外部变量的函数参数（不允许）
                     if (lru.get(CurrentKey,retrived_value)==true)
                     {
-                        hits++;
+                        hits_LRU++;
                         // 缓存返回值正确性检查
                         if (retrived_value!="value"+std::to_string(CurrentKey))
                         {
                             std::cout<<"使用get方法时读取错误在"<<retrived_value<<std::endl;
+                        }
+                    }
+                    if (lfuNoReduction.get(CurrentKey,retrived_value)==true)
+                    {
+                        hits_LFU++;
+                        // 缓存返回值正确性检查
+                        if (retrived_value!="value"+std::to_string(CurrentKey))
+                        {
+                            std::cout<<"LFU无衰减使用get方法时读取错误在"<<retrived_value<<std::endl;
+                        }
+                    }
+                    if (lfuWithReduction.get(CurrentKey,retrived_value)==true)
+                    {
+                        hits_LFU_AGING++;
+                        // 缓存返回值正确性检查
+                        if (retrived_value!="value"+std::to_string(CurrentKey))
+                        {
+                            std::cout<<"LFU有衰减使用get方法时读取错误在"<<retrived_value<<std::endl;
                         }
                     }
                 }
@@ -92,23 +122,41 @@ namespace TEST
                     std::string retrived_value="value"+std::to_string(CurrentKey);
                     if (lru.get(CurrentKey,retrived_value)==true)
                     {
-                        hits++;
+                        hits_LRU++;
                         if (retrived_value!="value"+std::to_string(CurrentKey))
                         {
                             std::cout<<"使用get方法时读取错误在"<<retrived_value<<std::endl;
                         }
                     }
+                    if (lfuNoReduction.get(CurrentKey,retrived_value)==true)
+                    {
+                        hits_LFU++;
+                        if (retrived_value!="value"+std::to_string(CurrentKey))
+                        {
+                            std::cout<<"LFU无衰减使用get方法时读取错误在"<<retrived_value<<std::endl;
+                        }
+                    }
+                    if (lfuWithReduction.get(CurrentKey,retrived_value)==true)
+                    {
+                        hits_LFU_AGING++;
+                        if (retrived_value!="value"+std::to_string(CurrentKey))
+                        {
+                            std::cout<<"LFU有衰减使用get方法时读取错误在"<<retrived_value<<std::endl;
+                        }
+                    }
                 }
             }
         }
-        printResult(operations,hits,t.TimerEnd().count());
+        printResult(operations,hits_LRU,t.TimerEnd().count(),"");
+        printResult(operations,hits_LFU,t.TimerEnd().count(),"LFU无衰减");
+        printResult(operations,hits_LFU_AGING,t.TimerEnd().count(),"LFU有衰减");
     }
 
-    void printResult(int operations,int hits,long long duration)
+    void printResult(int operations,int hits,long long duration,std::string description)
     {
         double hitRate = static_cast<double>(hits) / static_cast<double>(operations);
         // C++风格的强制类型转换应该使用static_cast
-        std::cout<<"热点数据访问测试结果:"<<std::endl;
+        std::cout<<description+" 热点数据访问测试结果:"<<std::endl;
         std::cout<<"操作数: "<<operations<<std::endl;
         std::cout<<"命中数: "<<hits<<std::endl;
         std::cout<<"命中率: "<<std::fixed<<std::setprecision(4)<<hitRate<<std::endl;

@@ -1,5 +1,5 @@
 #pragma once
-inline const int CACHE_CAPACITY=20;
+inline const int DEFAULT_CACHE_CAPACITY=20;
 inline const int OPERATIONS=500000;
 inline const int HOTKEY=20;
 inline const int COLDKEYS=5000;
