@@ -60,8 +60,10 @@ namespace LFU
             if (auto tailPrevPtr=tail->prev.lock())
             {
                 tailPrevPtr->next=node;
-                tailPrevPtr=node;
             }
+            tail->prev=node;
+            // C++ 允许你用一个 shared_ptr 去赋值给一个 weak_ptr。这正是 weak_ptr 的设计用法。
+            // 反过来不行
         }
         void removeNodeFromCurrList(std::shared_ptr<Node<Key,Value> > node)
         {
@@ -87,12 +89,12 @@ namespace LFU
     {
         private:
         // 索引出现次数对应的双向链表,注意这里的第二个参数是指针，指向一个新的Freqlist模板类实例，指针可以提升效率
-        std::unordered_map<Key,FreqList<Key,Value>*> FreqToNode;
-        // 用来查找某个key是否存在以及对应的node在哪的主索引
+        std::unordered_map<int,FreqList<Key,Value>*> FreqToList;
+        // 用来查找某个key是否存在以及对应的node在哪的主索引.
+        // LFU 算法的核心是按访问频率 (Frequency) 分组。这个 map 的键必须是 int，代表访问频率。
         std::unordered_map<Key,std::shared_ptr<Node<Key,Value>>> cache;
         int minFrequency;
         std::mutex mutex;
-        int capacity=DEFAULT_CACHE_CAPACITY;
 
         int threshold;
         int currentAverageNumber;
@@ -108,7 +110,7 @@ namespace LFU
         }
         ~LFUAlgorithm() override
         {
-            for (auto node:FreqToNode)
+            for (auto node:FreqToList)
             {
                 delete(node.second);
             }
@@ -116,35 +118,40 @@ namespace LFU
 
         void AddNodeToNewFrequencyList(std::shared_ptr<Node<Key,Value>> node)
         {
-            if (FreqToNode.contains(node->NodeFrequency)==false)
+            if (FreqToList.contains(node->NodeFrequency)==false)
             {
-                FreqList<Key,Value>(node->NodeFrequency);
-                FreqToNode[node->NodeFrequency]->addNodeToCurrTail(node);
+                FreqToList[node->NodeFrequency]=new FreqList<Key,Value>(node->NodeFrequency);
+                FreqToList[node->NodeFrequency]->addNodeToCurrTail(node);
             }
             else
             {
-                FreqToNode[node->NodeFrequency]->addNodeToCurrTail(node);
+                FreqToList[node->NodeFrequency]->addNodeToCurrTail(node);
             }
         }
         void DeleteOldNode()
         {
-            FreqToNode[minFrequency]->head->next=FreqToNode[minFrequency]->head->next->next;
-            FreqToNode[minFrequency]->head->next->prev=
-                std::weak_ptr<Node<Key,Value>> (FreqToNode[minFrequency]->head);
-            currentTotalNumber-=minFrequency;
-            if (cache.size()==0) currentAverageNumber=currentTotalNumber;
-            else currentAverageNumber+=currentTotalNumber/cache.size();
+            auto list = FreqToList[minFrequency];
+            auto NodeToDelete = list->getCurrFirstNode();
+            if (NodeToDelete==nullptr)
+                return;
+            list->removeNodeFromCurrList(NodeToDelete);
+            cache.erase(NodeToDelete->key);
+            currentTotalNumber -= NodeToDelete->NodeFrequency;
+            if (cache.size() == 0)
+                currentAverageNumber = 0;
+            else
+                currentAverageNumber = currentTotalNumber / cache.size();
         }
         void NodeFreqUpgrade(std::shared_ptr<Node<Key,Value>> node)
         {
-            FreqToNode[node->NodeFrequency]->removeNodeFromCurrList(node);
+            FreqToList[node->NodeFrequency]->removeNodeFromCurrList(node);
             node->NodeFrequency+=1;
             addFrequencyCount();
             AddNodeToNewFrequencyList(node);
         }
         void NodeFreqDowngrade(std::shared_ptr<Node<Key,Value>> node)
         {
-            FreqToNode[node->NodeFrequency]->removeNodeFromCurrList(node);
+            FreqToList[node->NodeFrequency]->removeNodeFromCurrList(node);
             node->NodeFrequency-=1;
             reduceFrequencyCount();
             AddNodeToNewFrequencyList(node);
@@ -152,41 +159,45 @@ namespace LFU
         void NewNodeInsert(Key key,Value value)
         {
             auto NewNode=std::make_shared<Node<Key,Value>>(key,value);
-            if (cache.size()<capacity)
+            if (cache.size()<DEFAULT_CACHE_CAPACITY)
             {
                 AddNodeToNewFrequencyList(NewNode);
                 addFrequencyCount();
+                cache[key]=NewNode;
             }
             else
             {
                 DeleteOldNode();
                 AddNodeToNewFrequencyList(NewNode);
                 addFrequencyCount();
+                cache[key]=NewNode;
             }
         }
         bool get(const Key& key, Value& value) override
         {
-            std::lock_guard<std::mutex> lock(mutex);
+            std::lock_guard lock(mutex);
             // 迭代器可以直接使用->访问哈希表的键和值
             if (cache.contains(key))
             {
                 auto Nodeptr=cache.find(key)->second;
-                if (Nodeptr->NodeFrequency==minFrequency)
+                if (Nodeptr->NodeFrequency==minFrequency && FreqToList[Nodeptr->NodeFrequency]->isEmpty())
                 {
                     minFrequency++;
                 }
                 NodeFreqUpgrade(Nodeptr);
+                value=Nodeptr->value;
                 return true;
             }
             return false;
         }
         void put(const Value& val,const Key& key) override
         {
-            std::lock_guard<std::mutex> lock(mutex);
+            std::lock_guard lock(mutex);
             auto CacheIter=cache.find(key);
             if (CacheIter!=cache.end())
             {
-                if (CacheIter->second->NodeFrequency==minFrequency)
+                CacheIter->second->value=val;
+                if (CacheIter->second->NodeFrequency==minFrequency && FreqToList[CacheIter->second->NodeFrequency]->isEmpty())
                 {
                     minFrequency++;
                 }
@@ -209,7 +220,7 @@ namespace LFU
         void UpdateMinfrequency()
         {
             minFrequency=INT_MAX;
-            for (auto map:FreqToNode)
+            for (auto map:FreqToList)
             {
                 if (map.second->isEmpty()==false && map.first<minFrequency)
                 {
@@ -235,15 +246,16 @@ namespace LFU
             int ValueToReduce=currentAverageNumber/2;
             for (auto map:cache)
             {
-                int NodeFrequency=map.second->NodeFrequency;
-                if (NodeFrequency==1) continue;
-                FreqToNode[map.first]->removeNodeFromCurrList(map.second);
-                if (NodeFrequency-ValueToReduce<1)
+                int NodeOldFrequency=map.second->NodeFrequency;
+                if (NodeOldFrequency==1) continue;
+                FreqToList[NodeOldFrequency]->removeNodeFromCurrList(map.second);
+                // 注意双向链表是基于频率，而不是Key值查找
+                if (NodeOldFrequency-ValueToReduce<1)
                 {
                     map.second->NodeFrequency=1;
                 }
                 else map.second->NodeFrequency-=ValueToReduce;
-                FreqToNode[map.first]->addNodeToCurrTail(map.second);
+                AddNodeToNewFrequencyList(map.second);
             }
             UpdateMinfrequency();
         }

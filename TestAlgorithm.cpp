@@ -32,9 +32,9 @@ namespace TEST
 
     void TestAlgorithm()
     {
-        LRU::LRUAlgorithm<std::string,int> lru(DEFAULT_CACHE_CAPACITY);
+        LRU::LRUAlgorithm<std::string,int> lru;
         LFU::LFUAlgorithm<int,std::string> lfuNoReduction(INT_MAX);
-        LFU::LFUAlgorithm<int,std::string> lfuWithReduction(20000); // 假设最大阈值是20000来触发衰减
+        LFU::LFUAlgorithm<int,std::string> lfuWithReduction(9000); // 假设最大阈值是20000来触发衰减
         int hits_LRU=0;
         int hits_LFU=0;
         int hits_LFU_AGING=0;
@@ -86,8 +86,8 @@ namespace TEST
                 if (HotOrCold(rng)<=3)
                 {
                     int CurrentKey = ColdKeyGen(rng);
-                    std::string retrived_value="value"+std::to_string(CurrentKey);
-                    // 这样避免使用一个只作用于函数的局部变量作为会修改外部变量的函数参数（不允许）
+                    std::string retrived_value;
+                    // C++允许传入空的函数参数，get通过修改对应指针的值返回value
                     if (lru.get(CurrentKey,retrived_value)==true)
                     {
                         hits_LRU++;
