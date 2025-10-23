@@ -14,18 +14,19 @@ namespace LRU
     class LRUNode
     {
         friend class LRUAlgorithm<Value,Key>;
-        private:
+
         Key key;
         Value value;
-        std::shared_ptr<LRUNode<Value,Key> > next;
-        std::weak_ptr<LRUNode<Value,Key> > prev;
+        std::shared_ptr<LRUNode> next;
+        std::weak_ptr<LRUNode> prev;
 
         public:
-        LRUNode(Value val,Key key):value(val),key(key)
+        LRUNode(Value val,Key key):key(key),value(val)
         {
             next=nullptr;
             prev.reset();
-        };
+        }
+
         Key getKey() const
         {
             return key;
@@ -46,9 +47,8 @@ namespace LRU
     };
 
     template<typename Value,typename Key>
-    class LRUAlgorithm: public AlgorithmStandard::Algorithmstandard<Value,Key>
+    class LRUAlgorithm final : public AlgorithmStandard::Algorithmstandard<Value,Key>
     {
-    private:
         std::unordered_map<Key,std::shared_ptr<LRUNode<Value,Key> > > cache;
         // 对于unordered_map的operator[key]，如果找到会返回value（返回某变量的引用=返回某变量本身）。
         std::shared_ptr<LRUNode<Value,Key>> dummyhead;
@@ -92,7 +92,7 @@ namespace LRU
 
         bool get(const Key& key, Value& value) override
         {
-            std::lock_guard<std::mutex> lock(mutex);
+            std::lock_guard lock(mutex);
             auto iter=cache.find(key);
             if (iter!=cache.end())
             {
@@ -102,7 +102,7 @@ namespace LRU
                 addNodeToLast(node_ptr);
                 return true;
             }
-            else  return false;
+            return false;
         }
 
         void put(const Value& val,const Key& key) override

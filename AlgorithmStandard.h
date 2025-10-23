@@ -1,8 +1,8 @@
 #pragma once
-inline const int DEFAULT_CACHE_CAPACITY=20;
-inline const int OPERATIONS=500000;
-inline const int HOTKEY=20;
-inline const int COLDKEYS=5000;
+inline constexpr int DEFAULT_CACHE_CAPACITY=20;
+inline constexpr int OPERATIONS=500000;
+inline constexpr int HOTKEY=20;
+inline constexpr int COLDKEYS=5000;
 //  使用 inline 关键字，这明确告诉编译器这个变量可以有多个定义。
 
 // C++中一般不使用c风格的define，而是const int

@@ -9,11 +9,10 @@
 
 namespace TEST
 {
-    void printResult(int operations,int hits,long long duration,std::string description);
+    void printResult(int operations,int hits, const std::string& description);
 
     class Timer
     {
-    private:
         std::chrono::high_resolution_clock::time_point start;
         std::chrono::high_resolution_clock::time_point end;
         //  使用high_resolution_clock不收系统时钟影响
@@ -25,7 +24,7 @@ namespace TEST
         auto TimerEnd()
         {
             end = std::chrono::high_resolution_clock ::now();
-            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+            const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
             return duration;
         }
     };
@@ -34,7 +33,7 @@ namespace TEST
     {
         LRU::LRUAlgorithm<std::string,int> lru;
         LFU::LFUAlgorithm<int,std::string> lfuNoReduction(INT_MAX);
-        LFU::LFUAlgorithm<int,std::string> lfuWithReduction(9000); // 假设最大阈值是20000来触发衰减
+        LFU::LFUAlgorithm<int,std::string> lfuWithReduction(100); // 假设最大阈值来触发衰减
         int hits_LRU=0;
         int hits_LFU=0;
         int hits_LFU_AGING=0;
@@ -42,10 +41,10 @@ namespace TEST
         std::random_device seed;
         // 需要随机种子，每次调用seed生成一个随机数，seed是实例名
         std::mt19937 rng(seed());
-        std::uniform_int_distribution<int> GetOrPut(1,10);
-        std::uniform_int_distribution<int> HotOrCold(1,10);
-        std::uniform_int_distribution<int> HotKeyGen(0,HOTKEY-1);
-        std::uniform_int_distribution<int> ColdKeyGen(HOTKEY, HOTKEY + COLDKEYS - 1);
+        std::uniform_int_distribution GetOrPut(1,10);
+        std::uniform_int_distribution HotOrCold(1,10);
+        std::uniform_int_distribution HotKeyGen(0,HOTKEY-1);
+        std::uniform_int_distribution ColdKeyGen(HOTKEY, HOTKEY + COLDKEYS - 1);
         // 注意冷数据的数量是5000个，而非和热数据一共5000个。
 
         // 预热
@@ -119,7 +118,7 @@ namespace TEST
                 else
                 {
                     int CurrentKey = HotKeyGen(rng);
-                    std::string retrived_value="value"+std::to_string(CurrentKey);
+                    std::string retrived_value;
                     if (lru.get(CurrentKey,retrived_value)==true)
                     {
                         hits_LRU++;
@@ -147,20 +146,20 @@ namespace TEST
                 }
             }
         }
-        printResult(operations,hits_LRU,t.TimerEnd().count(),"");
-        printResult(operations,hits_LFU,t.TimerEnd().count(),"LFU无衰减");
-        printResult(operations,hits_LFU_AGING,t.TimerEnd().count(),"LFU有衰减");
+        printResult(operations,hits_LRU,"");
+        printResult(operations,hits_LFU,"LFU无衰减");
+        printResult(operations,hits_LFU_AGING,"LFU有衰减");
+        std::cout<<"\n总用时: "<<t.TimerEnd().count()<<"ms"<<std::endl;
     }
 
-    void printResult(int operations,int hits,long long duration,std::string description)
+    void printResult(const int operations,const int hits, const std::string& description)
     {
-        double hitRate = static_cast<double>(hits) / static_cast<double>(operations);
+        const double hitRate = static_cast<double>(hits) / static_cast<double>(operations);
         // C++风格的强制类型转换应该使用static_cast
         std::cout<<description+" 热点数据访问测试结果:"<<std::endl;
         std::cout<<"操作数: "<<operations<<std::endl;
         std::cout<<"命中数: "<<hits<<std::endl;
         std::cout<<"命中率: "<<std::fixed<<std::setprecision(4)<<hitRate<<std::endl;
-        std::cout<<"总用时: "<<duration<<"ms"<<std::endl;
     }
 }
 
