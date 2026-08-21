@@ -1,3 +1,0 @@
-/home/ubuntu/projects/LRU_LFU_Cache_Algorithm/build/CMakeFiles/CacheAlgorithm.dir
-/home/ubuntu/projects/LRU_LFU_Cache_Algorithm/build/CMakeFiles/edit_cache.dir
-/home/ubuntu/projects/LRU_LFU_Cache_Algorithm/build/CMakeFiles/rebuild_cache.dir
