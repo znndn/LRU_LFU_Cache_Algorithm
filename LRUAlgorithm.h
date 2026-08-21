@@ -7,13 +7,13 @@
 
 namespace LRU
 {
-    template<typename Value,typename Key>
+    template<typename Key,typename Value>
     class LRUAlgorithm;
 
-    template<typename Value,typename Key>
+    template<typename Key,typename Value>
     class LRUNode
     {
-        friend class LRUAlgorithm<Value,Key>;
+        friend class LRUAlgorithm<Key,Value>;
 
         Key key;
         Value value;
@@ -21,7 +21,7 @@ namespace LRU
         std::weak_ptr<LRUNode> prev;
 
         public:
-        LRUNode(Value val,Key key):key(key),value(val)
+        LRUNode(Key key,Value val):key(key),value(val)
         {
             next=nullptr;
             prev.reset();
@@ -46,16 +46,16 @@ namespace LRU
         }
     };
 
-    template<typename Value,typename Key>
-    class LRUAlgorithm final : public AlgorithmStandard::Algorithmstandard<Value,Key>
+    template<typename Key,typename Value>
+    class LRUAlgorithm final : public AlgorithmStandard::Algorithmstandard<Key,Value>
     {
-        std::unordered_map<Key,std::shared_ptr<LRUNode<Value,Key> > > cache;
+        std::unordered_map<Key,std::shared_ptr<LRUNode<Key,Value> > > cache;
         // 对于unordered_map的operator[key]，如果找到会返回value（返回某变量的引用=返回某变量本身）。
-        std::shared_ptr<LRUNode<Value,Key>> dummyhead;
-        std::shared_ptr<LRUNode<Value,Key>> dummytail;
+        std::shared_ptr<LRUNode<Key,Value>> dummyhead;
+        std::shared_ptr<LRUNode<Key,Value>> dummytail;
         std::mutex mutex;
 
-        void addNodeToLast(std::shared_ptr<LRUNode<Value,Key> > node)
+        void addNodeToLast(std::shared_ptr<LRUNode<Key,Value> > node)
         {
             if (auto dummytail_prev_shareptr=dummytail->prev.lock())
             {
@@ -66,7 +66,7 @@ namespace LRU
             dummytail->prev=node;
         }
 
-        void removeNode(std::shared_ptr<LRUNode<Value,Key> > node)
+        void removeNode(std::shared_ptr<LRUNode<Key,Value> > node)
         {
             node->next->prev=node->prev;
             if (auto node_prev_sharedptr=node->prev.lock())
@@ -80,9 +80,12 @@ namespace LRU
 
         explicit LRUAlgorithm()
         {
-            dummyhead=std::make_shared<LRUNode<Value,Key> >(Value{}, Key{});
-            dummytail=std::make_shared<LRUNode<Value,Key> >(Value{}, Key{});
-            // 这是一个函数，调用它并希望返回变量需要加括号，同时需要给出默认的value和key（LRUNode模版要求）
+            dummyhead=std::make_shared<LRUNode<Key,Value> >(Key{}, Value{});
+            dummytail=std::make_shared<LRUNode<Key,Value> >(Key{}, Value{});
+            // 这是一个函数，调用它并希望返回变量需要加括号 
+            // make_shared<节点类型>(传给节点构造函数的参数)
+            // 同时需要给出默认的value和key（LRUNode模版要求）
+
             // 使用makeshare而非new来构造sharedpointer更加合适
             dummyhead->next=dummytail;
             dummytail->prev=dummyhead;
@@ -124,7 +127,7 @@ namespace LRU
                     auto NodeToDelete=dummyhead->next;
                     cache.erase(NodeToDelete->getKey());
                     removeNode(NodeToDelete);
-                    auto newNode=std::make_shared<LRUNode<Value,Key> >(val,key);
+                    auto newNode=std::make_shared<LRUNode<Key,Value> >(key,val);
                     // 不要使用new关键字，使用make_shared确保创建在堆上（手动，否则会被直接释放）
                     cache[key]=newNode;
                     // 不需要使用insert，因为cache[key]无法找到时会自动创建一个新的键值对（0和nullptr）
@@ -133,7 +136,7 @@ namespace LRU
                 }
                 else
                 {
-                    auto NewNode=std::make_shared<LRUNode<Value,Key> >(val,key);
+                    auto NewNode=std::make_shared<LRUNode<Key,Value> >(key,val);
                     cache[key]=NewNode;
                     addNodeToLast(NewNode);
                 }

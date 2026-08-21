@@ -30,7 +30,7 @@ namespace TEST
 
     void TestAlgorithm()
     {
-        LRU::LRUAlgorithm<std::string,int> lru;
+        LRU::LRUAlgorithm<int,std::string> lru;
         LFU::LFUAlgorithm<int,std::string> lfuNoReduction(INT_MAX);
         LFU::LFUAlgorithm<int,std::string> lfuWithReduction(100); // 假设最大阈值来触发衰减
         int hits_LRU=0;

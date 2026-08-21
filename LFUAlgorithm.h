@@ -8,7 +8,7 @@
 
 namespace LFU
 {
-    template<typename Value,typename Key>
+    template<typename Key,typename Value>
     class LFUAlgorithm;
 
     template <typename Key,typename Value>
@@ -86,8 +86,7 @@ namespace LFU
     };
 
     template <typename Key,typename Value>
-    class LFUAlgorithm final :public AlgorithmStandard::Algorithmstandard<Value,Key>
-    // 小心模版参数的历史遗留问题
+    class LFUAlgorithm final :public AlgorithmStandard::Algorithmstandard<Key,Value>
     {
         // 索引出现次数对应的双向链表,注意这里的第二个参数是指针，指向一个新的Freqlist模板类实例，指针可以提升效率
         std::unordered_map<int,FreqList<Key,Value>*> FreqToList;
