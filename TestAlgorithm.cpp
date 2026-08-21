@@ -15,7 +15,6 @@ namespace TEST
     {
         std::chrono::high_resolution_clock::time_point start;
         std::chrono::high_resolution_clock::time_point end;
-        //  使用high_resolution_clock不收系统时钟影响
     public:
         void TimerStart()
         {
