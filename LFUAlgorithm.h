@@ -32,7 +32,6 @@ namespace LFU
         std::shared_ptr<Node<Key,Value>> head;
         std::shared_ptr<Node<Key,Value>> tail;
         // 不需要专门的capacityUsage，检查KeyValue索引的HashMap的大小即可
-        friend class LFUAlgorithm<Key,Value>;
 
         public:
         explicit FreqList(const int freq)
@@ -127,7 +126,6 @@ namespace LFU
             // 这里要注意改了uniqueptr之后，不能直接取出对应的频率指针赋值给list
             // 要使用uniqueptr标准库中的 get()方法获取指针
             if (list==nullptr || list->isEmpty()) return;
-            // 说明自动创建了
             auto NodeToDelete = list->getCurrFirstNode();
             if (NodeToDelete==nullptr)
             {

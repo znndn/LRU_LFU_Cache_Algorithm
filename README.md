@@ -52,10 +52,10 @@ LFU 算法淘汰的是“访问频率最低”的数据。
         2.  每次访问（`addFrequencyCount`）后，都会重新计算 `currentAverageNumber`（当前平均访问频率）。
         3.  如果 `currentAverageNumber > threshold`，则触发 `ReduceAllNodeFrequency` 函数。
         4.  此函数会遍历 `cache` 中的**所有节点**，将其 `NodeFrequency` 按比例降低（例如减去平均值的一半），从而使旧热点数据“降频”，有机会被新数据淘汰。
-* **内存管理 (C++练习的重点)**：
-    * 此实现故意使用了**原始指针 (`FreqList*`)** 来管理频率链表。
-    * 这导致需要手动进行内存管理（`new FreqList` 和 `delete list`），是本项目中**非法内存访问**和**内存泄漏** bug 的主要来源。
-    * 它暴露了在使用原始指针时，必须极其小心地处理 `nullptr` 检查、use-after-free（释放后使用）和指针生命周期管理等问题。
+* **内存管理**：
+    * 频率链表（`FreqList`）由 `std::unordered_map<int, std::unique_ptr<FreqList<Key,Value>>>` 唯一持有，生命周期随容器自动管理：无裸指针、无手动 `new`/`delete`。
+    * 节点链表使用 `std::shared_ptr` 连接 `next`、`std::weak_ptr` 连接 `prev`，`weak_ptr` 打破循环引用，保证节点在没有外部引用时被自动销毁。
+    * 内存安全由智能指针的所有权语义在编译期保证，可配合 ASan/UBSan 构建验证无泄漏。
 
 ## 测试场景
 
