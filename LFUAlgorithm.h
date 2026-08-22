@@ -89,8 +89,8 @@ namespace LFU
     class LFUAlgorithm final :public AlgorithmStandard::Algorithmstandard<Key,Value>
     {
         // 索引出现次数对应的双向链表,注意这里的第二个参数是指针，指向一个新的Freqlist模板类实例，指针可以提升效率
-        std::unordered_map<int,FreqList<Key,Value>*> FreqToList;
-        // 这里其实应该使用智能指针，裸指针太容易出bug了
+        std::unordered_map<int,std::unique_ptr<FreqList<Key,Value>>> FreqToList;
+        // 改为使用unique指针，因为一个链表只会被一个map持有
         // 用来查找某个key是否存在以及对应的node在哪的主索引.
         // LFU 算法的核心是按访问频率 (Frequency) 分组。这个 map 的键必须是 int，代表访问频率。
         std::unordered_map<Key,std::shared_ptr<Node<Key,Value>>> cache;
@@ -104,25 +104,13 @@ namespace LFU
         // 相当于热点数据“老化”了，这样可以避免频次计数溢出，也可以缓解缓存污染。
 
         private:
-        explicit LFUAlgorithm(const int threshold):
-            minFrequency(INT_MAX),
-            threshold(threshold),currentAverageNumber(0),currentTotalNumber(0)
-        {
-        }
-        ~LFUAlgorithm() override
-        {
-            for (auto node:FreqToList)
-            {
-                delete node.second;
-            }
-        }
 
         void AddNodeToNewFrequencyList(std::shared_ptr<Node<Key,Value>> node)
         {
             int freq = node->NodeFrequency;
             if (FreqToList.contains(freq) == false || FreqToList[freq] == nullptr)
             {
-                FreqToList[freq] = new FreqList<Key,Value>(freq);
+                FreqToList[freq] = std::make_unique<FreqList<Key,Value>>(freq);
             }
             FreqToList[freq]->addNodeToCurrTail(node);
         }
@@ -135,13 +123,15 @@ namespace LFU
                 if (FreqToList.contains(minFrequency)==false) return;
                 // 那就是全空直接删完了
             }
-            auto list = FreqToList[minFrequency];
+            auto list = FreqToList[minFrequency].get();
+            // 这里要注意改了uniqueptr之后，不能直接取出对应的频率指针赋值给list
+            // 要使用uniqueptr标准库中的 get()方法获取指针
             if (list==nullptr || list->isEmpty()) return;
             // 说明自动创建了
             auto NodeToDelete = list->getCurrFirstNode();
             if (NodeToDelete==nullptr)
             {
-                delete list;
+                // 因此list无须手动删除，uniqueptr销毁的时候会一并销毁list
                 FreqToList.erase(minFrequency);
                 UpdateMinfrequency();
                 return;
@@ -159,7 +149,7 @@ namespace LFU
             int OldFrequency = node->NodeFrequency;
             if (FreqToList.contains(OldFrequency))
             {
-                auto oldList = FreqToList[OldFrequency];
+                auto oldList = FreqToList[OldFrequency].get();
                 if (oldList!=nullptr)
                 {
                    oldList->removeNodeFromCurrList(node);
@@ -190,6 +180,13 @@ namespace LFU
         }
 
         public:
+        explicit LFUAlgorithm(const int threshold):
+            minFrequency(INT_MAX),
+            threshold(threshold),currentAverageNumber(0),currentTotalNumber(0)
+        {
+        }
+        ~LFUAlgorithm() override = default;
+        // uniqueptr的析构函数会自动释放内存，所以不需要手动delete
         bool get(const Key& key, Value& value) override
         {
             std::lock_guard lock(mutex);
@@ -202,10 +199,9 @@ namespace LFU
                 NodeFreqUpgrade(Nodeptr);
                 if (FreqToList.contains(OldFrequency))
                 {
-                    auto oldList=FreqToList[OldFrequency];
+                    auto oldList=FreqToList[OldFrequency].get(); //同前
                     if (oldList!=nullptr && oldList->isEmpty())
                     {
-                        delete oldList;
                         FreqToList.erase(OldFrequency);
                         if (OldFrequency == minFrequency)
                         {
@@ -229,10 +225,9 @@ namespace LFU
                 NodeFreqUpgrade(CacheIter->second);
                 if (FreqToList.contains(OldFrequency))
                 {
-                    auto oldList=FreqToList[OldFrequency];
+                    auto oldList=FreqToList[OldFrequency].get();
                     if (oldList!=nullptr && oldList->isEmpty())
                     {
-                        delete oldList;
                         FreqToList.erase(OldFrequency);
 
                         if (OldFrequency == minFrequency)
@@ -258,7 +253,7 @@ namespace LFU
         void UpdateMinfrequency()
         {
             minFrequency=INT_MAX;
-            for (auto map_pair : FreqToList)
+            for (const auto& map_pair : FreqToList)
             {
                 if (map_pair.second != nullptr && map_pair.second->isEmpty()==false && map_pair.first < minFrequency)
                 {
@@ -308,7 +303,7 @@ namespace LFU
                 return;
             }
 
-            for (auto map_pair : cache)
+            for (const auto& map_pair : cache)
             {
                 auto node = map_pair.second;
                 int NodeOldFrequency = node->NodeFrequency;
@@ -317,7 +312,7 @@ namespace LFU
 
                 if (FreqToList.contains(NodeOldFrequency))
                 {
-                    auto oldList = FreqToList[NodeOldFrequency];
+                    auto oldList = FreqToList[NodeOldFrequency].get();
                     if (oldList != nullptr)
                     {
                         oldList->removeNodeFromCurrList(node);
@@ -340,13 +335,9 @@ namespace LFU
 
             for (auto it = FreqToList.begin(); it != FreqToList.end();)
             {
-                FreqList<Key, Value>* list = it->second;
+                FreqList<Key, Value>* list = it->second.get();
                 if (list == nullptr || list->isEmpty())
                 {
-                    if (list != nullptr)
-                    {
-                        delete list;
-                    }
                     it = FreqToList.erase(it);
                 }
                 else
