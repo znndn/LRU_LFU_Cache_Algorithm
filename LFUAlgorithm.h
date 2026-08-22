@@ -266,22 +266,6 @@ namespace LFU
             else currentAverageNumber=currentTotalNumber/cache.size();
             if (currentAverageNumber>threshold) ReduceAllNodeFrequency();
         }
-        void reduceFrequencyCount()
-        {
-            currentTotalNumber--;
-            if (cache.size() == 0)
-            {
-                currentAverageNumber = 0;
-            }
-            else
-            {
-                currentAverageNumber = currentTotalNumber / cache.size();
-            }
-            if (currentAverageNumber > threshold)
-            {
-                ReduceAllNodeFrequency();
-            }
-        }
         void ReduceAllNodeFrequency()
         {
             int ValueToReduce = currentAverageNumber / 2;
