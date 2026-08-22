@@ -36,7 +36,7 @@ LFU 算法淘汰的是“访问频率最低”的数据。
 
 * **数据结构**：
     * `cache` (Map 1)：`std::unordered_map<Key, std::shared_ptr<Node<Key,Value>>>`，用于 O(1) 的键值查找。
-    * `FreqToList` (Map 2)：`std::unordered_map<int, FreqList<Key,Value>*>`，这是 LFU 的核心。它将一个**访问频率 (int)** 映射到一个**存储着所有该频率节点的双向链表** (`FreqList*`)。
+    * `FreqToList` (Map 2)：`std::unordered_map<int, std::unique_ptr<FreqList<Key,Value>>>`，这是 LFU 的核心。它将一个**访问频率 (int)** 映射到一个**存储着所有该频率节点的双向链表**（由 `unique_ptr` 唯一持有）。
 * **实现细节**：
     * `get` / `put` 命中：
         1.  节点的访问频率（`NodeFrequency`）+1。
