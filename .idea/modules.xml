@@ -2,7 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/LRU_Test.iml" filepath="$PROJECT_DIR$/.idea/LRU_Test.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/CacheAlgorithm.iml" filepath="$PROJECT_DIR$/.idea/CacheAlgorithm.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/LRU_LFU_Cache_Algorithm.iml" filepath="$PROJECT_DIR$/.idea/LRU_LFU_Cache_Algorithm.iml" />
     </modules>
   </component>
 </project>
