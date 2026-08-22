@@ -1,0 +1,1 @@
+/usr/bin/c++ -fsanitize=address,undefined -fno-omit-frame-pointer -g CMakeFiles/CacheAlgorithm.dir/TestAlgorithm.cpp.o -o CacheAlgorithm 
