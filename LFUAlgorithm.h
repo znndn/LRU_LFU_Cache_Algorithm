@@ -156,15 +156,8 @@ namespace LFU
                 }
             }
             node->NodeFrequency+=1;
+            AddNodeToNewFrequencyList(node);
             addFrequencyCount();
-            AddNodeToNewFrequencyList(node);
-        }
-        void NodeFreqDowngrade(std::shared_ptr<Node<Key,Value>> node)
-        {
-            FreqToList[node->NodeFrequency]->removeNodeFromCurrList(node);
-            node->NodeFrequency-=1;
-            reduceFrequencyCount();
-            AddNodeToNewFrequencyList(node);
         }
         void NewNodeInsert(Key key,Value value)
         {
